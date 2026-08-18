@@ -141,10 +141,14 @@ module.exports = grammar({
       ),
 
     // _normal_bare_identifier: $ => $.__identifier_char_no_digit_sign,
+    // univrs fork: `<` and `>` are ALLOWED in bare identifiers (so bare
+    // `entity-ref<root:User>` parses), and `#` is DROPPED (so `#true`/`#false`/
+    // `#null` parse as `keyword`, not a bare identifier). This deviates from
+    // strict KDLv2 identifier-char rules to match univrs schema usage.
     _normal_bare_identifier: _ => token(
       seq(
-        /[\u4E00-\u9FFF\p{L}\p{M}\p{N}\p{Emoji}_~!@#\$%\^&\*.:'\|\?&&[^\s\d\/(){}<>;\[\]=,"]]/,
-        /[\u4E00-\u9FFF\p{L}\p{M}\p{N}\p{Emoji}\-_~!@#\$%\^&\*.:'\|\?+&&[^\s\/(){}<>;\[\]=,"]]*/,
+        /[\u4E00-\u9FFF\p{L}\p{M}\p{N}\p{Emoji}_~!@\$%\^&\*.:'\|\?&&[^\s\d\/(){};\[\]=,"]]/,
+        /[\u4E00-\u9FFF\p{L}\p{M}\p{N}\p{Emoji}\-_~!@\$%\^&\*.:'\|\?+&&[^\s\/(){};\[\]=,"]]*/,
       ),
     ),
     // identifier-char := unicode - linespace - [\/(){}<>;[]=,"]
@@ -168,8 +172,11 @@ module.exports = grammar({
     annotation_type: _ => choice(...ANNOTATION_BUILTINS),
     // prop := identifier '=' value
     prop: $ => seq($.identifier, '=', $.value),
-    // value := type? (string | number | keyword)
-    value: $ => seq(optional($.type), choice($.string, $.number, $.keyword)),
+    // value := type? (identifier | number | keyword)
+    // univrs fork: `identifier` (= string | _bare_identifier) instead of
+    // `string`, so KDLv2 unquoted identifier-string values parse — e.g.
+    // `component AccountInfo`, `field name string`, `requires AccountInfo`.
+    value: $ => seq(optional($.type), choice($.identifier, $.number, $.keyword)),
     // type := '(' identifier ')'
     type: $ => seq('(', choice($.identifier, $.annotation_type), ')'),
 
